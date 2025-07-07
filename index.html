@@ -245,7 +245,7 @@
     <script>
 
         const BASE_URL = 'https://3160-59-148-69-86.ngrok-free.app';
-        
+        // const BASE_URL = 'http://192.168.1.82:8866';
         let availableYears = [];
         let availableCompanies = [];
         let selectedYears = [];
@@ -256,7 +256,27 @@
         let currentReferences = {};
 
 
-        
+                // 創建一個通用的 fetch 函數
+        async function fetchWithNgrok(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'  // 跳過 ngrok 瀏覽器警告
+                }
+            };
+            
+            // 合併選項
+            const mergedOptions = {
+                ...defaultOptions,
+                ...options,
+                headers: {
+                    ...defaultOptions.headers,
+                    ...options.headers
+                }
+            };
+            
+            return fetch(url, mergedOptions);
+        }
  
 
         // Initialize
@@ -394,7 +414,7 @@
         async function loadFilters() {
             try {
                 // 修改这里
-                const response = await fetch(BASE_URL + '/api/filters');
+                const response = await fetchWithNgrok(BASE_URL + '/api/filters');
                 const data = await response.json();
                 
                 availableYears = data.years;
@@ -547,7 +567,7 @@
 
             try {
                 // 修改这里
-                const response = await fetch(BASE_URL + '/api/search', {
+                const response = await fetchWithNgrok(BASE_URL + '/api/search', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -640,7 +660,7 @@
             
             try {
                 // 修改这里
-                const response = await fetch(BASE_URL + '/api/answers', {
+                const response = await fetchWithNgrok(BASE_URL + '/api/answers', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
