@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Search System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .multi-select {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .question-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .answer-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .reference-content {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .reference-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        .reference-table th, 
+        .reference-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .reference-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .reference-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .reference-marker {
+            background-color: #fef3c7;
+            color: #92400e;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid #fbbf24;
+            display: inline-block;
+            margin: 0 2px;
+        }
+        .reference-marker:hover {
+            background-color: #fde68a;
+        }
+        .reference-popup {
+            position: fixed;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            max-width: 600px;
+            max-height: 500px;
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+        }
+        .reference-popup.show {
+            display: block;
+        }
+        .chart-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .chart-toggle {
+            display: flex;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+        .chart-toggle button {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9fafb;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .chart-toggle button.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Title -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-search text-blue-600"></i>
+                Enterprise Question Search System
+            </h1>
+            <p class="text-gray-600">AI-powered semantic search platform for enterprise data</p>
+        </div>
+
+        <!-- Search Area -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Year Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar-alt text-blue-500"></i>
+                        Select Year
+                    </label>
+                    <div class="relative">
+                        <button id="yearDropdown" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span id="yearText">Select year(s)</span>
+                            <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div id="yearOptions" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg multi-select">
+                            <div class="p-2">
+                                <label class="flex items-center hover:bg-gray-50 p-1 rounded">
+                                    <input type="checkbox" id="selectAllYears" class="mr-2">
+                                    <span class="font-medium">Select All</span>
+                                </label>
+                            </div>
+                            <div id="yearList" class="p-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Company Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-building text-green-500"></i>
+                        Select Company
+                    </label>
+                    <div class="relative">
+                        <button id="companyDropdown" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span id="companyText">Select company(s)</span>
+                            <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div id="companyOptions" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg multi-select">
+                            <div class="p-2">
+                                <label class="flex items-center hover:bg-gray-50 p-1 rounded">
+                                    <input type="checkbox" id="selectAllCompanies" class="mr-2">
+                                    <span class="font-medium">Select All</span>
+                                </label>
+                            </div>
+                            <div id="companyList" class="p-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Box -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-question-circle text-purple-500"></i>
+                        Enter Question
+                    </label>
+                    <div class="flex">
+                        <input type="text" id="searchInput" placeholder="Enter your question..." 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="searchButton" class="px-6 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="hidden text-center py-8">
+            <i class="fas fa-spinner fa-spin text-4xl text-blue-600"></i>
+            <p class="mt-2 text-gray-600">Searching...</p>
+        </div>
+
+        <!-- Search Results -->
+        <div id="searchResults" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-list text-blue-600"></i>
+                Similar Questions (<span id="resultCount">0</span>)
+            </h2>
+            <div id="questionList" class="space-y-4"></div>
+        </div>
+
+        <!-- Answer Display -->
+        <div id="answerSection" class="hidden mt-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-comments text-green-600"></i>
+                All Answers (<span id="answerCount">0</span>)
+            </h2>
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <p class="font-medium text-blue-800">Selected Question:</p>
+                <p id="selectedQuestion" class="text-blue-600 mt-1"></p>
+            </div>
+            
+            <!-- Chart Display Area -->
+            <div id="chartContainer" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-chart-bar text-orange-600"></i>
+                        Data Visualization
+                    </h2>
+                    <div class="chart-toggle">
+                        <button id="barChartBtn" class="active">Bar Chart</button>
+                        <button id="lineChartBtn">Line Chart</button>
+                        <button id="pieChartBtn">Pie Chart</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="dataChart"></canvas>
+                </div>
+            </div>
+            
+            <div id="answerList" class="space-y-4"></div>
+        </div>
+
+        <!-- Reference Popup -->
+        <div id="referencePopup" class="reference-popup">
+            <div class="flex justify-between items-start mb-4">
+                <h4 class="text-lg font-semibold text-gray-800">Reference Material</h4>
+                <button onclick="closeReferencePopup()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="referenceContent" class="reference-content"></div>
+            <div class="mt-4 text-sm text-gray-600">
+                <p><strong>Document:</strong> <span id="referenceDoc"></span></p>
+                <p><strong>ID:</strong> <span id="referenceId"></span></p>
+            </div>
+        </div>
+        
+        <!-- Overlay -->
+        <div id="overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-999" onclick="closeReferencePopup()"></div>
+    </div>
+
+    <script>
+
+        const BASE_URL = 'https://e605-59-148-69-86.ngrok-free.app';
+        
+        let availableYears = [];
+        let availableCompanies = [];
+        let selectedYears = [];
+        let selectedCompanies = [];
+        let currentChart = null;
+        let chartData = [];
+        let currentChartType = 'bar';
+        let currentReferences = {};
+
+
+        
+ 
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFilters();
+            setupEventListeners();
+            
+            // Chart button events
+            document.getElementById('barChartBtn').addEventListener('click', () => {
+                currentChartType = 'bar';
+                updateChartButtons();
+                renderChart();
+            });
+            
+            document.getElementById('lineChartBtn').addEventListener('click', () => {
+                currentChartType = 'line';
+                updateChartButtons();
+                renderChart();
+            });
+            
+            document.getElementById('pieChartBtn').addEventListener('click', () => {
+                currentChartType = 'pie';
+                updateChartButtons();
+                renderChart();
+            });
+        });
+
+        // Update chart button states
+        function updateChartButtons() {
+            document.getElementById('barChartBtn').classList.toggle('active', currentChartType === 'bar');
+            document.getElementById('lineChartBtn').classList.toggle('active', currentChartType === 'line');
+            document.getElementById('pieChartBtn').classList.toggle('active', currentChartType === 'pie');
+        }
+
+        // Modified reference parsing function - handles all reference markers
+        function parseAnswerWithReferences(answer, references, uniqueId) {
+            // Store reference data in global variable
+            currentReferences[uniqueId] = references;
+            
+            // Replace all reference markers with clickable tags
+            let formattedAnswer = answer;
+            let refIndexes = [];
+            
+            // Find all reference markers
+            const referencePattern = /##(\d+)\$\$/g;
+            let match;
+            while ((match = referencePattern.exec(answer)) !== null) {
+                refIndexes.push(parseInt(match[1]));
+            }
+            
+            // Replace each reference marker
+            refIndexes.forEach(refIndex => {
+                const refMatch = new RegExp(`##${refIndex}\\$\\$`, 'g');
+                if (refIndex < references.references.length) {
+                    formattedAnswer = formattedAnswer.replace(
+                        refMatch, 
+                        `<span class="reference-marker" onclick="showReference(${refIndex}, '${uniqueId}')">[Ref${refIndex}]</span>`
+                    );
+                } else {
+                    formattedAnswer = formattedAnswer.replace(
+                        refMatch, 
+                        `<span class="reference-marker invalid" title="Invalid reference">[Ref${refIndex}?]</span>`
+                    );
+                }
+            });
+            
+            return formattedAnswer;
+        }
+
+        // Show reference content - fixed version
+        function showReference(index, uniqueId) {
+            const references = currentReferences[uniqueId];
+            if (!references || !references.references || index >= references.references.length) {
+                console.error('Reference not found:', index, uniqueId);
+                return;
+            }
+            
+            const ref = references.references[index];
+            const popup = document.getElementById('referencePopup');
+            const overlay = document.getElementById('overlay');
+            const content = document.getElementById('referenceContent');
+            const docElement = document.getElementById('referenceDoc');
+            const idElement = document.getElementById('referenceId');
+            
+            // Set document info
+            docElement.textContent = ref.document_name || 'Unknown';
+            idElement.textContent = ref.id || 'Unknown';
+            
+            // Process content
+            let formattedContent = '';
+            if (ref.content) {
+                if (ref.content.trim().startsWith('<table')) {
+                    // If it's table HTML, insert directly and add styling
+                    formattedContent = ref.content.replace(/<table/g, '<table class="reference-table"');
+                } else {
+                    // If it's plain text, wrap in paragraphs and handle line breaks
+                    formattedContent = `<p class="text-gray-700 leading-relaxed">${ref.content.replace(/\n/g, '<br>')}</p>`;
+                }
+            } else {
+                formattedContent = '<p class="text-gray-500">No reference content available</p>';
+            }
+            
+            content.innerHTML = formattedContent;
+            
+            // Show popup and overlay
+            overlay.classList.remove('hidden');
+            popup.classList.add('show');
+            
+            // Calculate popup position (centered)
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const popupWidth = Math.min(600, viewportWidth - 40);
+            const popupHeight = Math.min(500, viewportHeight - 40);
+            
+            popup.style.width = popupWidth + 'px';
+            popup.style.maxHeight = popupHeight + 'px';
+            popup.style.left = ((viewportWidth - popupWidth) / 2) + 'px';
+            popup.style.top = ((viewportHeight - popupHeight) / 2) + 'px';
+        }
+
+        // Close reference popup
+        function closeReferencePopup() {
+            document.getElementById('referencePopup').classList.remove('show');
+            document.getElementById('overlay').classList.add('hidden');
+        }
+
+        // ESC key closes popup
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeReferencePopup();
+            }
+        });
+
+        // 修改所有fetch请求 - 添加BASE_URL前缀
+        async function loadFilters() {
+            try {
+                // 修改这里
+                const response = await fetch(BASE_URL + '/api/filters');
+                const data = await response.json();
+                
+                availableYears = data.years;
+                availableCompanies = data.companies;
+                
+                renderYearOptions();
+                renderCompanyOptions();
+            } catch (error) {
+                console.error('Error loading filters:', error);
+                alert('Failed to load filter options');
+            }
+        }
+
+        // Render year options
+        function renderYearOptions() {
+            const yearList = document.getElementById('yearList');
+            yearList.innerHTML = '';
+            
+            availableYears.forEach(year => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center hover:bg-gray-50 p-1 rounded cursor-pointer';
+                label.innerHTML = `
+                    <input type="checkbox" value="${year}" class="year-checkbox mr-2">
+                    <span>${year}</span>
+                `;
+                yearList.appendChild(label);
+            });
+        }
+
+        // Render company options
+        function renderCompanyOptions() {
+            const companyList = document.getElementById('companyList');
+            companyList.innerHTML = '';
+            
+            availableCompanies.forEach(company => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center hover:bg-gray-50 p-1 rounded cursor-pointer';
+                label.innerHTML = `
+                    <input type="checkbox" value="${company}" class="company-checkbox mr-2">
+                    <span class="text-sm">${company}</span>
+                `;
+                companyList.appendChild(label);
+            });
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            // Year dropdown
+            document.getElementById('yearDropdown').addEventListener('click', function() {
+                toggleDropdown('yearOptions');
+            });
+
+            // Company dropdown
+            document.getElementById('companyDropdown').addEventListener('click', function() {
+                toggleDropdown('companyOptions');
+            });
+
+            // Select all years
+            document.getElementById('selectAllYears').addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.year-checkbox');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+                updateSelectedYears();
+            });
+
+            // Select all companies
+            document.getElementById('selectAllCompanies').addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.company-checkbox');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+                updateSelectedCompanies();
+            });
+
+            // Year and company selection changes
+            document.addEventListener('change', function(e) {
+                if (e.target.classList.contains('year-checkbox')) {
+                    updateSelectedYears();
+                }
+                if (e.target.classList.contains('company-checkbox')) {
+                    updateSelectedCompanies();
+                }
+            });
+
+            // Search button
+            document.getElementById('searchButton').addEventListener('click', performSearch);
+            
+            // Enter key for search
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+
+            // Click outside to close dropdowns
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('#yearDropdown') && !e.target.closest('#yearOptions')) {
+                    document.getElementById('yearOptions').classList.add('hidden');
+                }
+                if (!e.target.closest('#companyDropdown') && !e.target.closest('#companyOptions')) {
+                    document.getElementById('companyOptions').classList.add('hidden');
+                }
+            });
+        }
+
+        // Toggle dropdown
+        function toggleDropdown(id) {
+            const dropdown = document.getElementById(id);
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Update selected years
+        function updateSelectedYears() {
+            selectedYears = Array.from(document.querySelectorAll('.year-checkbox:checked')).map(cb => cb.value);
+            const yearText = document.getElementById('yearText');
+            
+            if (selectedYears.length === 0) {
+                yearText.textContent = 'Select year(s)';
+            } else if (selectedYears.length === availableYears.length) {
+                yearText.textContent = 'All years';
+            } else {
+                yearText.textContent = `Selected ${selectedYears.length} year(s)`;
+            }
+        }
+
+        // Update selected companies
+        function updateSelectedCompanies() {
+            selectedCompanies = Array.from(document.querySelectorAll('.company-checkbox:checked')).map(cb => cb.value);
+            const companyText = document.getElementById('companyText');
+            
+            if (selectedCompanies.length === 0) {
+                companyText.textContent = 'Select company(s)';
+            } else if (selectedCompanies.length === availableCompanies.length) {
+                companyText.textContent = 'All companies';
+            } else {
+                companyText.textContent = `Selected ${selectedCompanies.length} company(s)`;
+            }
+        }
+
+        // Perform search
+        async function performSearch() {
+            const question = document.getElementById('searchInput').value.trim();
+            
+            if (!question) {
+                alert('Please enter a search question');
+                return;
+            }
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('searchResults').classList.add('hidden');
+            document.getElementById('answerSection').classList.add('hidden');
+            document.getElementById('chartContainer').classList.add('hidden');
+
+            try {
+                // 修改这里
+                const response = await fetch(BASE_URL + '/api/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        years: selectedYears,
+                        companies: selectedCompanies,
+                        top_k: 5,
+                        min_similarity: 0.3
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                renderSearchResults(data.results);
+            } catch (error) {
+                console.error('Error searching:', error);
+                alert('Search failed: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        // Render search results
+        function renderSearchResults(results) {
+            const resultContainer = document.getElementById('questionList');
+            const resultCount = document.getElementById('resultCount');
+            
+            resultCount.textContent = results.length;
+            resultContainer.innerHTML = '';
+
+            if (results.length === 0) {
+                resultContainer.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-search text-4xl mb-4"></i>
+                        <p>No similar questions found, please try adjusting your search criteria</p>
+                    </div>
+                `;
+            } else {
+                results.forEach((result, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-lg shadow-md p-6 question-card transition-all duration-200 cursor-pointer border-l-4 border-blue-500';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="text-lg font-semibold text-gray-800 flex-1 mr-4">
+                                ${result.question}
+                            </h3>
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                Similarity: ${(result.similarity * 100).toFixed(1)}%
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded">
+                                <i class="fas fa-calendar-alt mr-1"></i>${result.related_years.length} year(s)
+                            </span>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded">
+                                <i class="fas fa-building mr-1"></i>${result.related_companies.length} company(s)
+                            </span>
+                            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded">
+                                <i class="fas fa-comment mr-1"></i>${result.answer_count} answer(s)
+                            </span>
+                        </div>
+                        <button class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors view-answers-btn">
+                            <i class="fas fa-eye mr-2"></i>View All Answers
+                        </button>
+                    `;
+                    
+                    // Add event listener to button
+                    const viewBtn = card.querySelector('.view-answers-btn');
+                    viewBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showAllAnswers(result.question);
+                    });
+                    
+                    resultContainer.appendChild(card);
+                });
+            }
+
+            document.getElementById('searchResults').classList.remove('hidden');
+        }
+
+        // Show all answers
+        async function showAllAnswers(question) {
+            document.getElementById('loading').classList.remove('hidden');
+            
+            try {
+                // 修改这里
+                const response = await fetch(BASE_URL + '/api/answers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        years: selectedYears,
+                        companies: selectedCompanies
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                renderAllAnswers(question, data.answers);
+            } catch (error) {
+                console.error('Error getting answers:', error);
+                alert('Failed to get answers: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        // Render all answers
+        function renderAllAnswers(question, answers) {
+            document.getElementById('selectedQuestion').textContent = question;
+            document.getElementById('answerCount').textContent = answers.length;
+            
+            const answerContainer = document.getElementById('answerList');
+            answerContainer.innerHTML = '';
+
+            // Collect chart data
+            chartData = [];
+            
+            if (answers.length === 0) {
+                answerContainer.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-comments text-4xl mb-4"></i>
+                        <p>No answers found for this question</p>
+                    </div>
+                `;
+            } else {
+                answers.forEach((answer, index) => {
+                    const uniqueId = `answer_${answer.index}_${Date.now()}_${index}`;
+                    const formattedAnswer = parseAnswerWithReferences(answer.answer, answer.references, uniqueId);
+                    
+                    // Collect numerical data for charts
+                    if (answer.metadata.value && !isNaN(parseFloat(answer.metadata.value))) {
+                        chartData.push({
+                            year: answer.metadata.year,
+                            company: answer.metadata.company,
+                            value: parseFloat(answer.metadata.value),
+                            unit: answer.metadata.unit || 'Value'
+                        });
+                    }
+                    
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
+                                    <i class="fas fa-calendar-alt mr-1"></i>${answer.metadata.year}
+                                </span>
+                                <span class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+                                    <i class="fas fa-building mr-1"></i>${answer.metadata.company}
+                                </span>
+                                ${answer.metadata.model_name ? `
+                                    <span class="bg-gray-100 text-gray-800 text-sm font-medium px-3 py-1 rounded-full">
+                                        <i class="fas fa-robot mr-1"></i>${answer.metadata.model_name}
+                                    </span>
+                                ` : ''}
+                                ${answer.references.references.length > 0 ? `
+                                    <span class="bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">
+                                        <i class="fas fa-book mr-1"></i>${answer.references.references.length} reference(s)
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="prose max-w-none">
+                            <div class="text-gray-700 leading-relaxed">${formattedAnswer}</div>
+                        </div>
+                        ${answer.metadata.value || answer.metadata.unit ? `
+                            <div class="mt-4 p-3 bg-gray-50 rounded-lg">
+                                <div class="text-sm text-gray-600">
+                                    ${answer.metadata.value ? `<strong>Value:</strong> ${answer.metadata.value} ` : ''}
+                                    ${answer.metadata.unit ? `<strong>Unit:</strong> ${answer.metadata.unit}` : ''}
+                                </div>
+                            </div>
+                        ` : ''}
+                    `;
+                    answerContainer.appendChild(card);
+                });
+                
+                // Show chart if there's numerical data
+                if (chartData.length > 0) {
+                    document.getElementById('chartContainer').classList.remove('hidden');
+                    renderChart();
+                } else {
+                    document.getElementById('chartContainer').classList.add('hidden');
+                }
+            }
+
+            document.getElementById('answerSection').classList.remove('hidden');
+            document.getElementById('answerSection').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Render chart
+        function renderChart() {
+            // Destroy existing chart
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            const ctx = document.getElementById('dataChart').getContext('2d');
+            
+            // Group data
+            const groupedData = {};
+            let unit = '';
+            
+            chartData.forEach(item => {
+                const key = `${item.year}-${item.company}`;
+                if (!groupedData[key]) {
+                    groupedData[key] = {
+                        year: item.year,
+                        company: item.company,
+                        value: item.value,
+                        unit: item.unit
+                    };
+                    unit = item.unit; // Assuming all units are the same
+                }
+            });
+            
+            // Prepare chart data
+            const years = [...new Set(chartData.map(item => item.year))].sort();
+            const companies = [...new Set(chartData.map(item => item.company))].sort();
+            
+            // Create datasets
+            const datasets = companies.map(company => {
+                const companyData = years.map(year => {
+                    const found = Object.values(groupedData).find(item => 
+                        item.year === year && item.company === company
+                    );
+                    return found ? found.value : 0;
+                });
+                
+                // Generate random colors
+                const randomColor = () => {
+                    return `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
+                };
+                
+                return {
+                    label: company,
+                    data: companyData,
+                    backgroundColor: randomColor(),
+                    borderColor: randomColor(),
+                    borderWidth: 2
+                };
+            });
+            
+            // Create config based on chart type
+            let chartConfig;
+            
+            if (currentChartType === 'pie') {
+                // Special handling for pie chart - group by company
+                const companyTotals = {};
+                companies.forEach(company => {
+                    const total = Object.values(groupedData)
+                        .filter(item => item.company === company)
+                        .reduce((sum, item) => sum + item.value, 0);
+                    companyTotals[company] = total;
+                });
+                
+                chartConfig = {
+                    type: 'pie',
+                    data: {
+                        labels: companies,
+                        datasets: [{
+                            data: companies.map(company => companyTotals[company]),
+                            backgroundColor: companies.map(() => {
+                                return `rgb(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
+                            })
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Data by Company'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        return `${label}: ${value} ${unit}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+            } else {
+                // Bar and line charts
+                chartConfig = {
+                    type: currentChartType,
+                    data: {
+                        labels: years,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: unit
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Year'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Annual Data Trends'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.dataset.label || '';
+                                        const value = context.raw || 0;
+                                        return `${label}: ${value} ${unit}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+            
+            // Create new chart
+            currentChart = new Chart(ctx, chartConfig);
+        }
+    </script>
+</body>
+</html>
